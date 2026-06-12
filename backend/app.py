@@ -87,7 +87,16 @@ def get_db():
     if db_url:
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
-        return psycopg2.connect(db_url, sslmode="require")
+        import urllib.parse
+        parsed = urllib.parse.urlparse(db_url)
+        return psycopg2.connect(
+            host=parsed.hostname,
+            database=parsed.path.lstrip("/"),
+            user=parsed.username,
+            password=urllib.parse.unquote(parsed.password) if parsed.password else None,
+            port=parsed.port or 5432,
+            sslmode="require"
+        )
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
         database=os.getenv("DB_NAME", "wardrobe_db"),
