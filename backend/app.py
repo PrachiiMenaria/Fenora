@@ -4,7 +4,7 @@ Drop-in replacement: adds missing APIs, fixes response shapes expected by new fr
 """
 import os
 from dotenv import load_dotenv
-load_dotenv(override=True)
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 import json
 import logging
