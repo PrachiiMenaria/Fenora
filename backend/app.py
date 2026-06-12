@@ -31,9 +31,17 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_DOMAIN'] = None
 
+# Dynamically configure CORS origins based on environment variable FRONTEND_URL
+frontend_url = os.environ.get("FRONTEND_URL")
+origins = ["https://spendwise-beryl-six.vercel.app", "http://localhost:5173"]
+if frontend_url:
+    for url in frontend_url.split(","):
+        url = url.strip()
+        if url and url not in origins:
+            origins.append(url)
+
 CORS(app,
-     origins=["https://spendwise-beryl-six.vercel.app",
-               "http://localhost:5173"],
+     origins=origins,
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
@@ -307,36 +315,40 @@ def api_register():
         return jsonify({"error": "Email already registered."}), 400
     except Exception as e:
         logger.error(f"Register error: {e}")
-        return jsonify({"error": "Registration failed. Please try again."}), 500
+        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
-    data = request.json or {}
-    email = data.get("email", "").strip().lower()
-    pwd = data.get("password", "")
+    try:
+        data = request.json or {}
+        email = data.get("email", "").strip().lower()
+        pwd = data.get("password", "")
 
-    conn = get_db()
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute("SELECT * FROM users WHERE email=%s", (email,))
-        user = cur.fetchone()
-    conn.close()
+        conn = get_db()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+            user = cur.fetchone()
+        conn.close()
 
-    if user and check_password_hash(user["password_hash"], pwd):
-        import jwt
-        token = jwt.encode({
-            "user_id": user["id"],
-            "exp": datetime.utcnow() + timedelta(days=7)
-        }, app.config["SECRET_KEY"], algorithm="HS256")
-        
-        return jsonify({
-            "message": f"Welcome back, {user['name']}!",
-            "user": {"id": user["id"], "name": user["name"], "email": user["email"]},
-            "user_id": user["id"], "name": user["name"],
-            "budget": float(user.get("monthly_budget") or 0),
-            "token": token
-        })
-    return jsonify({"error": "Invalid email or password."}), 401
+        if user and check_password_hash(user["password_hash"], pwd):
+            import jwt
+            token = jwt.encode({
+                "user_id": user["id"],
+                "exp": datetime.utcnow() + timedelta(days=7)
+            }, app.config["SECRET_KEY"], algorithm="HS256")
+            
+            return jsonify({
+                "message": f"Welcome back, {user['name']}!",
+                "user": {"id": user["id"], "name": user["name"], "email": user["email"]},
+                "user_id": user["id"], "name": user["name"],
+                "budget": float(user.get("monthly_budget") or 0),
+                "token": token
+            })
+        return jsonify({"error": "Invalid email or password."}), 401
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
 
 @app.route("/api/check-auth", methods=["GET"])

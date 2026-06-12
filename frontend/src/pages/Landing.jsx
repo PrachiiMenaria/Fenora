@@ -472,6 +472,7 @@ export default function Landing({ onGetStarted }) {
               <p style={{ marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.55)" }}>🔒 Private, secure, and ad-free forever.</p>
             </div>
           </div>
+        </RevealSection>
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
